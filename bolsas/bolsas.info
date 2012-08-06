@@ -1,0 +1,7 @@
+name = Bolsas
+description = A simple entity example showing the main steps required to set up your own entity.
+core = 7.x
+; Information added by drupal.org packaging script on 2012-07-21
+version = "7.x-1.x-dev"
+core = "7.x"
+
