@@ -1,464 +1,599 @@
 <?php
+
+/**
+ * Classe controladora do módulo de Bolsas
+ */
+class BolsasController extends DrupalDefaultEntityController {
+
+	/**
+	 * Salva uma bolsa no sistema
+	 * @param Bolsa $bolsas
+	 */
+	public function save($bolsa) {
+		drupal_write_record('bolsas', $bolsa);
+		field_attach_insert('bolsas', $bolsa);
+		module_invoke_all('entity_insert', 'bolsas', $bolsa);
+		return $bolsas;
+	}
+
+	/**
+	 * Cria uma novo objeto Bolsa e o retorna
+	 *
+	 */
+	public function create() {
+		$bolsa = new stdClass();
+		$bolsa->type  			= 'bolsas';
+		$bolsa->pid   			= 0;
+		$bolsa->pr    			= '';
+		$bolsa->nome  			= '';
+		$bolsa->valor 			= 0;
+		$bolsa->vencimento = '';
+		return $bolsa;
+	}
+
+	/**
+	 * Elimina uma Bolsa do sistema
+	 * @param Bolsa $bolsa
+	 */
+	public function delete($bolsa) {
+		$this->delete_multiple(array($bolsa) );
+	}
+
+	/**
+	 * Elimina várias bolsas do sistema
+	 * @param Bolsa $bolsa
+	 * @throws Exception
+	 */
+	public function delete_multiple($bolsas) {
+		$pdis = array();
+
+		if (!empty($bolsas) ) {
+			$transaction = db_transaction();
+				
+			try {
+
+				foreach ($bolsas as $bolsa) {
+					module_invoke_all('bolsas_delete', $bolsa);
+					module_invoke_all('bolsas_delete', $bolsa, 'bolsas');
+					field_attach_delete('bolsas', $bolsa);
+					$basic_ids[] = $bolsa->pid;
+				}
+				
+				db_delete('bolsas')->condition('pid', $basic_ids, 'IN')->execute();
+
+			}	catch (Exception $e) {
+				$transaction->rollback();
+				watchdog_exception('bolsas', $e);
+				throw $e;
+			}
+		}
+	}
+
+}
+
+
+/**
+ * Retorna informações sobre bolsas
+ * @return um mói de coisa
+ */
 function bolsas_entity_info(){
- $bolsas_info['bolsas'] = array(
-   'label' => t('Bolsas'),
-   'controller class' => 'BolsasController',
-   'base table' => 'bolsas',
-   'uri callback' => 'bolsas_uri',
-   'fieldable' => TRUE,
-   'entity keys' => array(
-     'id' => 'pid',
-   ),
-   'static cache' => TRUE,
-   'bundles' => array(
-     'bolsas'=> array(
-       'label' => 'Bolsas',
-       'admin' => array(
-         'path' => 'admin/structure/bolsas/manage',
-         'access arguments' => array('administer bolsas'),
-       ),
-     ),
-   ),
-   'view modes' => array(
-     'tweaky' => array(
-       'label' => t('Bolsas'),
-       'custom settings' =>  FALSE,
-     ),
-   )
- );
+	$bolsas_info['bolsas'] = array (
+			'label' 						=> t('Bolsas'),
+			'controller class' 	=> 'BolsasController',
+			'base table' 				=> 'bolsas',
+			'uri callback' 			=> 'bolsas_uri',
+			'fieldable' 				=> TRUE,
+			'entity keys' 			=> array ('id' => 'pid',),
+			'static cache' 			=> TRUE,
+			'bundles' 					=> array (
+					'bolsas' 		=> array (
+							'label' => 'Bolsas',
+							'admin' => array (
+									'path' 						 => 'admin/structure/bolsas/manage',
+									'access arguments' => array('administer bolsas'),
+							),
+					),
+			),
+			'view modes' 			=> array (
+					'tweaky' => array (
+							'label' 					 => t('Bolsas'),
+							'custom settings' =>  FALSE,
+					),
+			)
+	);
 
- return $bolsas_info;
-}
-function bolsas_delete($entity) {
- entity_get_controller('bolsas')->delete($entity);
-}
-class BolsasController extends DrupalDefaultEntityController{
- public function save($bolsas) {
-  drupal_write_record('bolsas', $bolsas);
-  field_attach_insert('bolsas', $bolsas);
-  module_invoke_all('entity_insert', 'bolsas', $bolsas);
-  return $bolsas;
- }
- public function create(){
-  $bolsas = new stdClass();
-  $bolsas->type = 'bolsas';
-  $bolsas->pid = 0;
-  $bolsas->pr = '';
-  $bolsas->nome = '';
-  $bolsas->valor = 0;
-  $bolsas->vencimento = '';
-    return $bolsas;
- }
- public function delete($entity) {
-  $this->delete_multiple(array($entity));
- }
- 
- public function delete_multiple($entities) {
-  $pdis = array();
-  if (!empty($entities)) {
-   $transaction = db_transaction();
-   try {
-    foreach ($entities as $entity) {
-     module_invoke_all('bolsas_delete', $entity);
-     module_invoke_all('bolsas_delete', $entity, 'bolsas');
-     field_attach_delete('bolsas', $entity);
-     $basic_ids[] = $entity->pid;
-    }
-    db_delete('bolsas')
-    ->condition('pid', $basic_ids, 'IN')
-    ->execute();
- 
-   }
-   catch (Exception $e) {
-    $transaction->rollback();
-    watchdog_exception('bolsas', $e);
-    throw $e;
-   }
-  }
- }
-}
-function bolsas_uri($bolsas){
- return array(
-   'path' => 'bolsas/' . $bolsas->pid,
- );
-}
-function bolsas_load($pid = NULL, $reset = FALSE){
- $pids = (isset ($pid) ? array($pid) : array());
- $bolsas = bolsas_load_multiple($pids, $reset);
- return $bolsas ? reset ($bolsas) : FALSE;
+	return $bolsas_info;
 }
 
+/**
+ * Deleta uma bolsa
+ * @param unknown $entity
+ */
+function bolsas_delete($bolsa) {
+	entity_get_controller('bolsas')->delete($bolsa);
+}
+
+/**
+ * Retorna a URI de localização das bolsas
+ * @param Bolsa $bolsas
+ * @return URI
+ */
+function bolsas_uri($bolsas) {
+	return array (
+			'path' => 'bolsas/' . $bolsas->pid,
+	);
+}
+
+/**
+ * Carreaga uma bolsa a partir de sua ID
+ * @param string $pid
+ * @param string $reset
+ * @return Bolsa, ou Boolean
+ */
+function bolsas_load($pid = NULL, $reset = FALSE) {
+	$pids   = (isset ($pid) ? array($pid) : array());
+	$bolsas = bolsas_load_multiple($pids, $reset);
+	return $bolsas ? reset($bolsas) : FALSE;
+}
+
+/**
+ * Carrega várias bolsas
+ * @param string $pids
+ * @param unknown $conditions
+ * @param string $reset
+ */
 function bolsas_load_multiple($pids = FALSE, $conditions = array(), $reset = FALSE){
- return entity_load('bolsas', $pids, $conditions, $reset);
+	return entity_load('bolsas', $pids, $conditions, $reset);
 }
 
+/**
+ * Função que manipula a página de bolsas
+ */
 function bolsas_menu(){
- $items['bolsas'] = array(
-   'title' => 'Bolsas',
-   'page callback' => 'bolsas_info_page',
-   'access callback' => TRUE,
- );
- $items['admin/structure/bolsas/manage'] = array(
-   'title' => 'Bolsas admin',
-   'description' => 'Manage bolsas structure',
-   'page callback' => 'bolsas_info',
-   'access arguments' => array('administer bolsas'),
- );
- $items['bolsas/%bolsas'] = array(
-   'title callback' => 'bolsas_page_title',
-   'title arguments' => array(3),
-   'page callback' => 'bolsas_page_view',
-   'page arguments' => array(3),
-   'access arguments' => array('view bolsas'),
- );
- $items['bolsas/%bolsas/view'] = array(
-   'title' => 'View',
-   'type' => MENU_DEFAULT_LOCAL_TASK,
-   'weight' => -10,
- );
-  $items['bolsas/update'] = array(
-    'title' => 'Update entry',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('bolsas_form_update'),
-	'access arguments' => array('administer bolsas'),
-  );
- $items['bolsas/add'] = array(
-   'title' => 'Cadastro de bolsas',
-   'page callback' => 'bolsas_add',
-   'access arguments' => array('create bolsa'),
- );
- return $items;
+	$items['bolsas'] = array(
+			'title' 						=> 'Bolsas',
+			'page callback' 		=> 'bolsas_info_page',
+			'access callback' 	=> TRUE,
+	);
+
+	$items['admin/structure/bolsas/manage'] = array(
+			'title' 						=> 'Bolsas - Administrativo',
+			'description' 			=> 'Estrutura de Manipulação de Bolsas',
+			'page callback' 		=> 'bolsas_info',
+			'access arguments'	=> array('administer bolsas'),
+	);
+
+	$items['bolsas/%bolsas'] = array(
+			'title callback' 		=> 'bolsas_page_title',
+			'title arguments' 	=> array(3),
+			'page callback' 		=> 'bolsas_page_view',
+			'page arguments' 		=> array(3),
+			'access arguments' 	=> array('view bolsas'),
+	);
+
+	$items['bolsas/%bolsas/view'] = array (
+			'title' 	=> 'View',
+			'type' 		=> MENU_DEFAULT_LOCAL_TASK,
+			'weight' 	=> -10,
+	);
+
+	$items['bolsas/update'] = array(
+			'title' 						=> 'Alterações de Cadastro',
+			'page callback' 		=> 'drupal_get_form',
+			'page arguments' 		=> array('bolsas_form_update'),
+			'access arguments'	=> array('administer bolsas'),
+	);
+
+	$items['bolsas/add'] = array(
+			'title' 						=> 'Cadastro de Bolsas',
+			'page callback' 		=> 'bolsas_add',
+			'access arguments' 	=> array('create bolsa'),
+	);
+
+	return $items;
 }
 
-
+/**
+ * Retorna uma página de informação para as Bolsas
+ * @return uma pagina
+ */
 function bolsas_info_page() {
-  $content[] = array(
-    '#type' => 'item',
-    '#markup' => t('Listagem de Modalidades de Bolsas',
-      array('!link' => l(t('here'), 'admin/structure/bolsas/manage'))
-    ),
-  );
-  $content['table'] = bolsas_list_entities();
-  return $content;
+	$content[] = array(
+			'#type' 	=> 'item',
+			'#markup' => t('Listagem de Modalidades de Bolsas',
+					array('!link' => l(t('here'), 'admin/structure/bolsas/manage'))
+			),
+	);
+	$content['table'] = bolsas_list_entities();
+	return $content;
 }
 
-
+/**
+ * Lista todas as entidades em uma tabela
+ * @return pagina com tabela
+ */
 function bolsas_list_entities() {
-  $content = array();
+	$content = array();
 
-  if (!user_access('view any bolsas entity')) {
-    $content[] = array(
-      '#type' => 'item',
-      '#markup' => t('This user does not have permission to view bolsas entities.'),
-    );
-    return $content;
-  }
-  $entities = bolsas_load_multiple();
-  if (!empty($entities)) {
-    foreach ( $entities as $entity ) {
-      $rows[] = array(
-        'data' => array(
-          'Código' => $entity->pid,
-          'proR' => $entity->pr,
-          'Modalidade' => l($entity->nome, 'bolsas/' . $entity->pid),
-          'Valor' => $entity->valor,
-          'Vencimento' => $entity->vencimento,
-        ),
-      );
-    }
-    $content['entity_table'] = array(
-      '#theme' => 'table',
-      '#rows' => $rows,
-      '#header' => array(t('Código'), t('Pró-Reitoria'),t('Modalidade'),t('Valor'),t('Vencimento'))
-    );
-  }
-  else {
-    $content[] = array(
-      '#type' => 'item',
-      '#markup' => t('No bolsas entities currently exist.'),
-    );
-  }
-  return $content;
+	if (!user_access('view any bolsas entity')) {
+		$content[] = array(
+				'#type' 	=> 'item',
+				'#markup' => t('Este usuário não tem permissão para visualizar as bolsas.'),
+		);
+		return $content;
+	}
+
+	$bolsas = bolsas_load_multiple();
+
+	if (!empty($bolsas) ) {
+		foreach ( $bolsas as $bolsa) {
+			$rows[] = array(
+					'data' => array(
+							'Código' 		 => $bolsa->pid,
+							'proR' 	 		 => $bolsa->pr,
+							'Modalidade' => l($bolsa->nome, 'bolsas/' . $bolsa->pid),
+							'Valor' 		 => $bolsa->valor,
+							'Vencimento' => $bolsa->vencimento,
+					),
+			);
+		}
+
+		$content['entity_table'] = array(
+				'#theme' 	=> 'table',
+				'#rows' 	=> $rows,
+				'#header' => array(	t('PID'),
+						t('Pró-Reitoria'),
+						t('Modalidade'),
+						t('Valor (em R$)'),
+						t('Vencimento'))
+		);
+	}
+
+	else {
+		$content[] = array(
+				'#type' => 'item',
+				'#markup' => t('Não há bolsas cadastradas no momento.'),
+		);
+	}
+
+	return $content;
 }
 
-
+/**
+ * Verifica se o usuário tem permissão para acessar o módulo
+ * @return boolean
+ */
 function bolsas_permission(){
- return array(
-   'administer bolsas' =>  array(
-     'title' => t('Administer bolsas'),
-     'restrict access' => TRUE,
-   ),
-   'view bolsas' => array(
-     'title' => t('View bolsas'),
-   )
- );
+	return array(
+			'administer bolsas' =>  array(
+					'title' => t('Administrador de Bolsas'),
+					'restrict access' => TRUE,
+			),
+			'view bolsas' => array(
+					'title' => t('Ver Bolsas'),
+			)
+	);
 }
 
-
+/**
+ * Mensagem para o administrador de bolsas
+ * @return string
+ */
 function bolsas_info() {
- return ('Welcome to the administration page for your Postits!');
+	return ('Bem-Vindo à página de Administração.');
 }
 
+/**
+ * Retorna o PID da bolsa
+ * @param unknown $bolsas
+ */
 function bolsas_page_title($bolsas){
- return $bolsas->pid;
+	return $bolsas->pid;
 }
 
+/**
+ * Exibe a página de Visualização de bolsas
+ * @param unknown $bolsas
+ * @param string $view_mode
+ */
 function bolsas_page_view($bolsas, $view_mode = 'tweaky'){
- 
- $bolsas->content = array('#view_mode' => $view_mode,);
- field_attach_prepare_view('bolsas', array($bolsas->pid => $bolsas), $view_mode);
- entity_prepare_view('bolsas', array($bolsas->pid => $bolsas));
- $bolsas->content += field_attach_view('bolsas', $bolsas, $view_mode);
-  $bolsas->content['nome'] = array(
-   '#type' => 'item',
-   '#title' => t('Nome'),
-   '#markup' => $bolsas->nome,
- );
- $bolsas->content['pr'] = array(
-   '#type' => 'item',
-   '#title' => t('Pró-Reitoria'),
-   '#markup' => $bolsas->pr,
- );
- $bolsas->content['valor'] = array(
-   '#type' => 'item',
-   '#title' => t('Valor'),
-   '#markup' => $bolsas->valor,
- );
- $bolsas->content['vencimento'] = array(
-   '#type' => 'item',
-   '#title' => t('Vencimento'),
-   '#markup' => $bolsas->venccimento,
- );
- global $language ;
- $langcode = $language->language ;
- module_invoke_all('entity_view', $bolsas, 'bolsas', $view_mode, $langcode);
- drupal_alter(array('bolsas_add_form', 'entity_view'), $bolsas->content);
- return $bolsas->content;
+
+	$bolsas->content = array('#view_mode' => $view_mode,);
+	field_attach_prepare_view('bolsas', array($bolsas->pid => $bolsas), $view_mode);
+	entity_prepare_view('bolsas', array($bolsas->pid => $bolsas));
+	
+	$bolsas->content += field_attach_view('bolsas', $bolsas, $view_mode);
+	$bolsas->content['nome'] = array(
+			'#type' 	=> 'item',
+			'#title' 	=> t('Nome'),
+			'#markup' => $bolsas->nome,
+	);
+	
+	$bolsas->content['pr'] = array(
+			'#type' 	=> 'item',
+			'#title' 	=> t('Pró-Reitoria'),
+			'#markup' => $bolsas->pr,
+	);
+	
+	$bolsas->content['valor'] = array(
+			'#type' 	=> 'item',
+			'#title' 	=> t('Valor'),
+			'#markup' => $bolsas->valor,
+	);
+	
+	$bolsas->content['vencimento'] = array(
+			'#type' 	=> 'item',
+			'#title' 	=> t('Vencimento'),
+			'#markup' => $bolsas->venccimento,
+	);
+	
+	global $language ;
+	$langcode = $language->language ;
+	
+	module_invoke_all('entity_view', $bolsas, 'bolsas', $view_mode, $langcode);
+	drupal_alter(array('bolsas_add_form', 'entity_view'), $bolsas->content);
+	
+	return $bolsas->content;
 }
 
+/**
+ * Adiciona uma bolsa
+ */
 function bolsas_add() {
- $bolsas = entity_get_controller('bolsas')->create();
- return drupal_get_form('bolsas_form', $bolsas);
+	$bolsas = entity_get_controller('bolsas')->create();
+	return drupal_get_form('bolsas_form', $bolsas);
 }
-function bolsas_form($form, &$form_state, $bolsas) {
- print_r($bolsas);
- $form['bolsas'] = array(
-   '#type' => 'value',
-   '#value' => $bolsas,
- );
- $form['pr'] = array(
-   '#type' => 'select',
-   '#title' => t('Pró-Reitoria'),
-   '#options' => array(
-     'PROGEST' => t('PROGEST'),
-     'PROAD' => t('PROAD'),
-     'PRAE' => t('PRAE'),
-     'PREG' => t('PREG'),
-     'PROPLAN' => t('PROPLAN'),
-     'PRPPG' => t('PRPPG'),
-   ),
-   '#default_value' =>'PROAD',
-   '#required' => TRUE,
- );
- 
- $form['nome'] = array(
-   '#type' => 'textfield',
-   '#title' => t('Nome'),
-   '#required' => TRUE,
- ); 
- $form['valor'] = array(
-   '#type' => 'textfield',
-   '#title' => t('Valor'),
-   '#required' => TRUE,
-   '#size' => 10,
- );
- $form['vencimento'] = array(
-   '#type' => 'select',
-   '#title' => t('Vencimento Bolsa'),
-   '#options' => array(
-     '1' => t('1'),
-	 '2' => t('2'),
-	 '3' => t('3'),
-	 '4' => t('4'),
-	 '5' => t('5'),
-	 '6' => t('6'),
-	 '7' => t('7'),
-	 '8' => t('8'),
-	 '9' => t('9'),
-	 '10' => t('10'),
-	 '11' => t('11'),
-	 '12' => t('12'),
-   ),
-   '#default_value' =>'12',
-   '#required' => TRUE,
- );
- field_attach_form('bolsas', $bolsas, $form, $form_state);
 
- $form['submit'] = array(
-   '#type' => 'submit',
-   '#value' => t('Cadastrar'),
- );
- return $form;
+/**
+ * Retorna uma formulário de cadastro de alteração
+ */
+function bolsas_form($form, &$form_state, $bolsas) {
+	$form['bolsas'] = array(
+			'#type' 	=> 'value',
+			'#value' 	=> $bolsas,
+	);
+	
+	$form['pr'] = array(
+			'#type' 		=> 'select',
+			'#title' 		=> t('Pró-Reitoria'),
+			'#options' 	=> array(
+					'PROGEST' => t('PROGEST'),
+					'PROAD' 	=> t('PROAD'),
+					'PRAE' 		=> t('PRAE'),
+					'PREG' 		=> t('PREG'),
+					'PROPLAN' => t('PROPLAN'),
+					'PRPPG' 	=> t('PRPPG'),
+			),
+			'#default_value' =>'PROAD',
+			'#required' 		 => TRUE,
+	);
+
+	$form['nome'] = array(
+			'#type' 		=> 'textfield',
+			'#title' 		=> t('Nome'),
+			'#required' => TRUE,
+			'#size'     => 40
+	);
+	
+	$form['valor'] = array(
+			'#type' 		=> 'textfield',
+			'#title' 		=> t('Valor (em R$)'),
+			'#required' => TRUE,
+			'#size' 		=> 10,
+	);
+	
+	$form['vencimento'] = array(
+			'#type' 	 => 'select',
+			'#title' 	 => t('Dia de Vencimento'),
+			'#options' => array(
+					'01' => t('01'),
+					'02' => t('02'),
+					'03' => t('03'),
+					'04' => t('04'),
+					'05' => t('05'),
+					'06' => t('06'),
+					'07' => t('07'),
+					'08' => t('08'),
+					'09' => t('09'),
+					'10' => t('10'),
+					'11' => t('11'),
+					'12' => t('12'),
+			),
+			'#default_value' =>'12',
+			'#required' 		 => TRUE,
+	);
+	
+	field_attach_form('bolsas', $bolsas, $form, $form_state);
+
+	$form['submit'] = array(
+			'#type' 	=> 'submit',
+			'#value' 	=> t('Cadastrar'),
+	);
+	return $form;
 }
+
 function bolsas_form_validate($form, &$form_state) {
- $bolsas_submisttion = $form_state['values']['bolsas'];
- field_attach_form_validate('bolsas', $bolsas_submisttion, $form, $form_state);
+	$bolsas_submisttion = $form_state['values']['bolsas'];
+	field_attach_form_validate('bolsas', $bolsas_submisttion, $form, $form_state);
 }
 
 function bolsas_form_submit($form, &$form_state) {
- $bolsas = $form_state['values']['bolsas']; 
- $bolsas->vencimento = $form_state['values']['vencimento'];
- $bolsas->nome = $form_state['values']['nome'];
- $bolsas->valor = $form_state['values']['valor'];
- $bolsas->pr = $form_state['values']['pr'];
- field_attach_submit('bolsas', $bolsas, $form, $form_state);
- $bolsas = bolsas_save($bolsas);
- $form_state['redirect'] = "bolsas/".$bolsas->pid;
+	$bolsas = $form_state['values']['bolsas'];
+	$bolsas->vencimento = $form_state['values']['vencimento'];
+	$bolsas->nome = $form_state['values']['nome'];
+	$bolsas->valor = $form_state['values']['valor'];
+	$bolsas->pr = $form_state['values']['pr'];
+	field_attach_submit('bolsas', $bolsas, $form, $form_state);
+	$bolsas = bolsas_save($bolsas);
+	$form_state['redirect'] = "bolsas/".$bolsas->pid;
 }
+
 function bolsas_save(&$bolsas) {
- return entity_get_controller('bolsas')->save($bolsas);
+	return entity_get_controller('bolsas')->save($bolsas);
 }
-
-
-
-
 
 function bolsas_entry_load($entry = array()) {
 
-  $select = db_select('bolsas', 'bolsa');
-  $select->fields('bolsa');
+	$select = db_select('bolsas', 'bolsa');
+	$select->fields('bolsa');
 
-  // Add each field and value as a condition to this query.
-  foreach ($entry as $field => $value) {
-    $select->condition($field, $value);
-  }
-  // Return the result in object format.
-  return $select->execute()->fetchAll();
+	// Add each field and value as a condition to this query.
+	foreach ($entry as $field => $value) {
+		$select->condition($field, $value);
+	}
+	// Return the result in object format.
+	return $select->execute()->fetchAll();
 }
 
 function bolsas_form_update($form, &$form_state) {
-  $form = array(
-    '#prefix' => '<div id="updateform">',
-    '#suffix' => '</div>',
-  );
+	$form = array(
+			'#prefix' => '<div id="updateform">',
+			'#suffix' => '</div>',
+	);
 
-  $entries = bolsas_entry_load();
-  $keyed_entries = array();
-  if (empty($entries)) {
-    $form['no_values'] = array(
-      '#value' => t("No entries exist in the table dbtng_example table."),
-    );
-    return $form;
-  }
+	$entries = bolsas_entry_load();
+	$keyed_entries = array();
+	
+	// se não houverem bolsas cadastradas, o sistema exibe uma página apenas com um aviso
+	if (empty($entries)) {
+		$form['no_values'] = array(
+				'#value' => t("Não existem Bolsas cadastradas para serem atualizadas."),
+		);
+		return $form;
+	}
 
-  foreach ($entries as $entry) {
-    $options[$entry->pid] = t("@pid: @nome @vencimento @valor @pr", array('@pid' => $entry->pid, '@nome' => $entry->nome, '@vencimento' => $entry->vencimento, '@valor' => $entry->valor, '@pr' => $entry->pr));
-    $keyed_entries[$entry->pid] = $entry;
-  }
-  $default_entry = !empty($form_state['values']['pid']) ? $keyed_entries[$form_state['values']['pid']] : $entries[0];
+	foreach ($entries as $entry) {
+		$options[$entry->pid] = t("@pid: @nome @vencimento @valor @pr",
+				 array(	'@pid' 				=> $entry->pid, 
+				 				'@nome' 			=> $entry->nome, 
+				 				'@vencimento' => $entry->vencimento, 
+				 				'@valor' 			=> $entry->valor, 
+				 				'@pr' 				=> $entry->pr));
+		$keyed_entries[$entry->pid] = $entry;
+	}
+	
+	$default_entry = !empty($form_state['values']['pid']) ? $keyed_entries[$form_state['values']['pid']] : $entries[0];
+	$form_state['entries'] = $keyed_entries;
 
-  $form_state['entries'] = $keyed_entries;
+	$form['pid'] = array(
+			'#type' 	 				=> 'select',
+			'#options' 				=> $options,
+			'#title' 					=> t('Choose entry to update'),
+			'#default_value' 	=> $default_entry->pid,
+			'#ajax' => array(
+					'wrapper' 	=> 'updateform',
+					'callback'	=> 'bolsas_form_update_callback',
+			),
+	);
 
-  $form['pid'] = array(
-    '#type' => 'select',
-    '#options' => $options,
-    '#title' => t('Choose entry to update'),
-    '#default_value' => $default_entry->pid,
-    '#ajax' => array(
-      'wrapper' => 'updateform',
-      'callback' => 'bolsas_form_update_callback',
-    ),
-  );
+	$form['nome'] = array(
+			'#type' 					=> 'textfield',
+			'#title' 					=> t('Primeiro Nome Alterado'),
+			'#size' 					=> 15,
+			'#default_value' 	=> $default_entry->nome,
+	);
+	
+	$form['valor'] = array(
+			'#type'				 		=> 'textfield',
+			'#title' 					=> t('Valor (em R$)'),
+			'#required' 			=> TRUE,
+			'#size' 					=> 10,
+			'#default_value'	=> $default_entry->valor,
+	);
+	
+	$form['vencimento'] = array(
+			'#type' 	=> 'select',
+			'#title' 	=> t('Dia de Vencimento'),
+			'#options' => array(
+					'01' => t('01'),
+					'02' => t('02'),
+					'03' => t('03'),
+					'04' => t('04'),
+					'05' => t('05'),
+					'06' => t('06'),
+					'07' => t('07'),
+					'08' => t('08'),
+					'09' => t('09'),
+					'10' => t('10'),
+					'11' => t('11'),
+					'12' => t('12'),
+			),
+			'#default_value' =>$default_entry->vencimento,
+			'#required' => TRUE,
+	);
+	
+	$form['pr'] = array(
+			'#type' 	=> 'select',
+			'#title' 	=> t('Pró-Reitoria'),
+			'#options' => array(
+					'PROGEST' => t('PROGEST'),
+					'PROAD' 	=> t('PROAD'),
+					'PRAE' 		=> t('PRAE'),
+					'PREG' 		=> t('PREG'),
+					'PROPLAN' => t('PROPLAN'),
+					'PRPPG' 	=> t('PRPPG'),
+			),
+			'#default_value'	=> $default_entry->pr,
+			'#required' 			=> TRUE,
+	);
 
-  $form['nome'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Updated first name'),
-    '#size' => 15,
-    '#default_value' => $default_entry->nome,
-  );
-  $form['valor'] = array(
-   '#type' => 'textfield',
-   '#title' => t('Valor'),
-   '#required' => TRUE,
-   '#size' => 10,
-   '#default_value' => $default_entry->valor,
-  );
-  $form['vencimento'] = array(
-   '#type' => 'select',
-   '#title' => t('Vencimento Bolsa'),
-   '#options' => array(
-     '1' => t('1'),
-	 '2' => t('2'),
-	 '3' => t('3'),
-	 '4' => t('4'),
-	 '5' => t('5'),
-	 '6' => t('6'),
-	 '7' => t('7'),
-	 '8' => t('8'),
-	 '9' => t('9'),
-	 '10' => t('10'),
-	 '11' => t('11'),
-	 '12' => t('12'),
-   ),
-   '#default_value' =>$default_entry->vencimento,
-   '#required' => TRUE,
- );
- $form['pr'] = array(
-   '#type' => 'select',
-   '#title' => t('Pró-Reitoria'),
-   '#options' => array(
-     'PROGEST' => t('PROGEST'),
-     'PROAD' => t('PROAD'),
-     'PRAE' => t('PRAE'),
-     'PREG' => t('PREG'),
-     'PROPLAN' => t('PROPLAN'),
-     'PRPPG' => t('PRPPG'),
-   ),
-   '#default_value' =>$default_entry->pr,
-   '#required' => TRUE,
- );
-
-  $form['submit'] = array(
-    '#type' => 'submit',
-    '#value' => t('Update'),
-  );
-  return $form;
+	$form['submit'] = array(
+			'#type' 	=> 'submit',
+			'#value' 	=> t('Update'),
+	);
+	
+	return $form;
 }
 
+/**
+ * Callback para funcao de update
+ */
 function bolsas_form_update_callback($form, $form_state) {
-  $entry = $form_state['entries'][$form_state['values']['pid']];
+	$entry = $form_state['entries'][$form_state['values']['pid']];
 
-  foreach (array('nome,vencimento,valor,pr') as $item) {
-    $form[$item]['#value'] = $entry->$item;
-  }
-  return $form;
+	foreach (array('nome,vencimento,valor,pr') as $item) {
+		$form[$item]['#value'] = $entry->$item;
+	}
+	
+	return $form;
 }
 
+/**
+ *  Validação de atualização de entradas
+ */
 function bolsas_entry_update($entry) {
-  try {
-    // db_update()...->execute() returns the number of rows updated.
-    $count = db_update('bolsas')
-              ->fields($entry)
-              ->condition('pid', $entry['pid'])
-              ->execute();
-  }
-  catch (Exception $e) {
-    drupal_set_message(t('db_update failed. Message = %message, query= %query',
-      array('%message' => $e->getMessage(), '%query' => $e->query_string)), 'error');
-  }
-  return $count;
+	try {
+		$count = db_update('bolsas')
+				->fields($entry)
+						->condition('pid', $entry['pid'])
+								->execute();
+	}	catch (Exception $e) {
+		drupal_set_message(t('[Contacte o Suporte] Falha ao cadastrar a Bolsa: %message, query= %query',
+		array('%message' => $e->getMessage(), '%query' => $e->query_string)), 'error');
+	}
+	
+	return $count;
 }
 
+/**
+ * Funcao de submissao de atualizacoes
+ * @param unknown $form
+ * @param unknown $form_state
+ */
 function bolsas_form_update_submit($form, &$form_state) {
-
-  // Save the submitted entry.
-  $entry = array(
-    'pid' => $form_state['values']['pid'],
-    'nome' => $form_state['values']['nome'],
-    'vencimento' => $form_state['values']['vencimento'],
-    'valor' => $form_state['values']['valor'],
-    'pr' => $form_state['values']['pr'],
-  );
-  $count = bolsas_entry_update($entry);
-  drupal_set_message(t("Updated entry @entry (@count row updated)", array('@count' => $count, '@entry' => print_r($entry, TRUE))));
+	$entry = array(
+			'pid' 				=> $form_state['values']['pid'],
+			'nome' 				=> $form_state['values']['nome'],
+			'vencimento'	=> $form_state['values']['vencimento'],
+			'valor' 			=> $form_state['values']['valor'],
+			'pr' 					=> $form_state['values']['pr'],
+	);
+	
+	$count = bolsas_entry_update($entry);
+	drupal_set_message(t("Bolsa atualizada @entry (@count row updated)", array('@count' => $count, '@entry' => print_r($entry, TRUE) ) ) );
 }
+
+
+
+
+
