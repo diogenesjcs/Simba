@@ -12,13 +12,13 @@ class Modalidade {
 	var $nome;
 	var $pro_reitoria;
 	var $valor;
-	var $validade;
+	var $vencimento;
 	
-	public function __construct($nom, $pro_reit, $value, $validad) {
-		$this->nome = $nom;
+	public function __construct($nome, $pro_reit, $value, $vencimento) {
+		$this->nome = $nome;
 		$this->pro_reitoria = $pro_reit;
 		$this->valor = $value;
-		$this->validade = $validade;
+		$this->vencimento = $vencimento;
 	}
 	
 }
