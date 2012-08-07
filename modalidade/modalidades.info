@@ -1,0 +1,4 @@
+name = Cadastro de Modalidade de Bolsas
+description = Um módulo para cadastro de Modalidade de Bolsas.
+core = 7.x
+

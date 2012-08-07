@@ -1,34 +1,34 @@
 <?php
-function bolsas_schema() {
-  $schema['bolsas'] = array (
-   'description' => 'BD bolsas.',
+function modalidade_schema() {
+  $schema['modalidade'] = array (
+   'description' => 'Tabela de Modalidades',
    'fields' => array(
      'pid' => array(
-       'description' => 'Primary key bolsas id.',
+       'description' => 'Primary key modalidade id.',
        'type' => 'serial',
        'unsigned' => TRUE,
        'not null' => TRUE,
      ),
      'nome' => array(
-       'description' => 'Nome da bolsa',
+       'description' => 'Nome da Modalidade',
        'type' => 'varchar',
        'length' => '50',
        'not null' => TRUE,
      ),
      'vencimento' => array(
-       'description' => 'Vencimento',
+       'description' => 'Vencimento da Modalidade',
        'type' => 'varchar',
        'length' => '2',
        'not null' => TRUE,
      ),
      'valor' => array(
-       'description' => 'Valor da bolsa',
+       'description' => 'Valor da Modalidade',
        'type' => 'int',
        'not null' => TRUE,
        'default' => 0,
      ),
      'pr' => array(
-       'description' => 'Pro-reitoria',
+       'description' => 'ProReitoria',
        'type' => 'varchar',
        'length' => '50',
        'not null' => FALSE,
