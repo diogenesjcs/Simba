@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Classe que representa um aluno
+ * Classe que representa um aluno bolsista
  * @author Sergio Lisan
  *
  */
